@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>採用情報|認定こども園 中央幼稚園</title>
+<meta name="description" content="認定こども園 中央幼稚園の採用特設ページ。先生の1日、先輩インタビュー、募集要項、応募フォームをご紹介します。まずは園見学からお気軽にどうぞ。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brown:#7b4a12;
+  --navy:#1d3f7d;
+  --sky:#4a9de8;
+  --sky-light:#7cc0f5;
+  --blue:#3b7de0;
+  --green:#3faa4f;
+  --red:#e0503c;
+  --pale-blue:#a5dcf5;
+  --pale-green:#a8dfa8;
+  --pale-red:#f5b0a5;
+  --cream:#fffdf5;
+  --purple:#6a3fb5;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Rounded Mplus 1c","Yu Gothic",sans-serif;
+  color:#333;
+  background:#fff;
+  line-height:1.8;
+  overflow-x:hidden;
+}
+img{max-width:100%;height:auto;}
+
+/* ===== ヘッダー(水彩パステル調) ===== */
+.site-header{
+  position:relative;
+  padding:18px 16px 26px;
+  text-align:center;
+  background:
+    radial-gradient(ellipse 340px 240px at 8% 20%, rgba(247,183,210,.55), transparent 70%),
+    radial-gradient(ellipse 360px 260px at 30% 80%, rgba(255,236,170,.6), transparent 70%),
+    radial-gradient(ellipse 340px 240px at 55% 15%, rgba(190,225,250,.6), transparent 70%),
+    radial-gradient(ellipse 320px 240px at 78% 70%, rgba(200,240,205,.5), transparent 70%),
+    radial-gradient(ellipse 300px 220px at 96% 25%, rgba(230,200,245,.5), transparent 70%),
+    linear-gradient(#fffdf8,#fff8f0);
+}
+.header-inner{max-width:900px;margin:0 auto;}
+.logo-row{
+  display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+}
+.logo-mark{
+  width:58px;height:58px;flex:none;
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #a8742e, #7b4a12);
+  color:#fff;font-size:15px;font-weight:900;line-height:1.1;
+  display:flex;align-items:center;justify-content:center;
+  border:3px solid #e7cf9a;
+  box-shadow:0 2px 6px rgba(0,0,0,.2);
+}
+.school-name{text-align:left;}
+.school-name .corp{font-size:12px;color:var(--brown);font-weight:700;}
+.school-name h1{font-size:30px;color:var(--brown);font-weight:900;letter-spacing:.08em;}
+.pandas{font-size:34px;letter-spacing:.1em;}
+.header-tagline{
+  margin-top:8px;font-size:12px;color:#8a6a3a;font-weight:700;
+}
+.recruit-badge{
+  display:inline-block;margin-top:12px;
+  background:var(--red);color:#fff;
+  font-size:15px;font-weight:900;letter-spacing:.15em;
+  padding:6px 26px;border-radius:999px;
+  box-shadow:0 3px 0 rgba(0,0,0,.12);
+}
+
+/* ===== 雲の区切り ===== */
+.cloud-edge{
+  height:34px;
+  background-image:
+    radial-gradient(circle at 50% -14px, #fff 32px, rgba(255,255,255,0) 33px),
+    radial-gradient(circle at 50% -4px, #fff 22px, rgba(255,255,255,0) 23px);
+  background-size:88px 68px,88px 68px;
+  background-position:0 0,44px 0;
+  background-repeat:repeat-x;
+}
+.cloud-edge.cream{
+  background-image:
+    radial-gradient(circle at 50% -14px, var(--cream) 32px, rgba(255,255,255,0) 33px),
+    radial-gradient(circle at 50% -4px, var(--cream) 22px, rgba(255,255,255,0) 23px);
+}
+
+/* ===== ヒーロー(空色) ===== */
+.hero{
+  background:linear-gradient(180deg,var(--sky) 0%,var(--sky-light) 100%);
+  color:#fff;text-align:center;
+  padding:14px 16px 56px;
+  position:relative;
+}
+.hero h2{
+  font-size:clamp(28px,6vw,44px);
+  font-weight:900;letter-spacing:.12em;
+  text-shadow:0 3px 0 rgba(29,63,125,.35);
+  margin-top:26px;
+}
+.hero p.lead{
+  margin:18px auto 0;max-width:640px;
+  font-size:clamp(14px,3.5vw,17px);font-weight:700;
+  text-shadow:0 1px 2px rgba(29,63,125,.4);
+}
+.hero .hero-panda{font-size:56px;margin-top:14px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.15));}
+.hero .float-cloud{
+  position:absolute;color:rgba(255,255,255,.8);font-size:40px;
+  animation:floaty 6s ease-in-out infinite;
+}
+.hero .float-cloud.c1{left:6%;top:30%;}
+.hero .float-cloud.c2{right:8%;top:18%;animation-delay:-3s;}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+
+/* ===== 共通セクション ===== */
+section{padding:56px 16px;}
+.container{max-width:960px;margin:0 auto;}
+.sec-title{
+  text-align:center;margin-bottom:8px;
+}
+.sec-title .en{
+  display:block;font-size:12px;font-weight:700;letter-spacing:.25em;color:var(--sky);
+}
+.sec-title h2{
+  display:inline-block;
+  background:var(--navy);color:#fff;
+  font-size:clamp(20px,4.5vw,26px);font-weight:900;letter-spacing:.12em;
+  padding:8px 34px;border-radius:999px;
+  box-shadow:0 3px 0 rgba(0,0,0,.12);
+}
+.sec-title .cloud-deco{font-size:22px;display:block;margin-bottom:2px;}
+.sec-lead{text-align:center;font-size:14px;font-weight:700;color:#555;margin:14px auto 34px;max-width:640px;}
+
+/* ===== 園の特色 ===== */
+.about{background:var(--cream);}
+.feature-cards{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px;
+}
+.feature-card{
+  background:#fff;border-radius:22px;padding:20px 16px;text-align:center;
+  border:3px solid;
+  box-shadow:0 3px 8px rgba(0,0,0,.06);
+}
+.feature-card.b-blue{border-color:var(--pale-blue);}
+.feature-card.b-green{border-color:var(--pale-green);}
+.feature-card.b-red{border-color:var(--pale-red);}
+.feature-card .fc-icon{
+  width:64px;height:64px;margin:0 auto 10px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:34px;
+}
+.b-blue .fc-icon{background:#e3f4fc;}
+.b-green .fc-icon{background:#e8f7e8;}
+.b-red .fc-icon{background:#fdeae6;}
+.feature-card h3{font-size:16px;font-weight:900;margin-bottom:6px;}
+.b-blue h3{color:var(--blue);}
+.b-green h3{color:var(--green);}
+.b-red h3{color:var(--red);}
+.feature-card p{font-size:13px;color:#666;}
+
+/* ===== 先生の1日(タイムライン) ===== */
+.day{background:linear-gradient(180deg,var(--sky) 0%,var(--sky-light) 100%);}
+.day .sec-title h2{background:#fff;color:var(--navy);}
+.day .sec-title .en{color:#eaf6ff;}
+.day .sec-lead{color:#fff;text-shadow:0 1px 2px rgba(29,63,125,.4);}
+.timeline{
+  max-width:640px;margin:0 auto;position:relative;
+  padding-left:8px;
+}
+.timeline::before{
+  content:"";position:absolute;left:57px;top:10px;bottom:10px;
+  width:6px;border-radius:3px;
+  background:rgba(255,255,255,.7);
+}
+.tl-item{
+  position:relative;display:flex;align-items:flex-start;gap:18px;
+  margin-bottom:22px;
+}
+.tl-time{
+  flex:none;width:104px;
+  background:#fff;border-radius:999px;
+  text-align:center;font-weight:900;font-size:15px;
+  padding:6px 0;position:relative;z-index:1;
+  box-shadow:0 2px 4px rgba(0,0,0,.15);
+}
+.tl-item:nth-child(3n+1) .tl-time{color:var(--blue);border:3px solid var(--pale-blue);}
+.tl-item:nth-child(3n+2) .tl-time{color:var(--green);border:3px solid var(--pale-green);}
+.tl-item:nth-child(3n)   .tl-time{color:var(--red);border:3px solid var(--pale-red);}
+.tl-body{
+  background:#fff;border-radius:18px;padding:14px 18px;flex:1;
+  box-shadow:0 3px 8px rgba(29,63,125,.18);
+}
+.tl-body h3{font-size:15px;font-weight:900;color:var(--navy);}
+.tl-body h3 .emoji{margin-right:6px;}
+.tl-body p{font-size:13px;color:#666;margin-top:2px;}
+
+/* ===== 先輩インタビュー ===== */
+.interview{background:var(--cream);}
+.interview-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:30px;
+}
+.iv-card{
+  background:#fff;border-radius:24px;overflow:hidden;
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+  border:3px solid var(--pale-blue);
+}
+.iv-card:nth-child(2){border-color:var(--pale-red);}
+.iv-head{
+  display:flex;align-items:center;gap:16px;
+  padding:20px;
+  background:linear-gradient(135deg,#e3f4fc,#f2fbff);
+}
+.iv-card:nth-child(2) .iv-head{background:linear-gradient(135deg,#fdeae6,#fff6f4);}
+.iv-photo{
+  width:88px;height:88px;flex:none;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff,#dcefff);
+  display:flex;align-items:center;justify-content:center;
+  font-size:44px;border:3px solid #fff;
+  box-shadow:0 2px 6px rgba(0,0,0,.12);
+}
+.iv-photo small{position:absolute;font-size:9px;color:#999;margin-top:66px;}
+.iv-name h3{font-size:18px;font-weight:900;color:var(--navy);}
+.iv-name p{font-size:12px;color:#777;font-weight:700;}
+.iv-name .badge{
+  display:inline-block;font-size:11px;font-weight:900;color:#fff;
+  background:var(--blue);border-radius:999px;padding:1px 12px;margin-top:4px;
+}
+.iv-card:nth-child(2) .iv-name .badge{background:var(--red);}
+.iv-qa{padding:20px;}
+.iv-qa dt{
+  font-size:14px;font-weight:900;color:var(--navy);
+  display:flex;gap:8px;align-items:baseline;margin-top:14px;
+}
+.iv-qa dt:first-child{margin-top:0;}
+.iv-qa dt .q{
+  flex:none;color:#fff;background:var(--sky);
+  width:26px;height:26px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:13px;transform:translateY(4px);
+}
+.iv-qa dd{
+  font-size:13px;color:#666;margin:6px 0 0 34px;
+  background:#f8fafc;border-radius:12px;padding:10px 14px;
+}
+
+/* ===== 募集要項 ===== */
+.requirements{background:linear-gradient(180deg,var(--sky-light),var(--sky));}
+.requirements .sec-title h2{background:#fff;color:var(--navy);}
+.requirements .sec-title .en{color:#eaf6ff;}
+.req-table-wrap{
+  background:#fff;border-radius:24px;padding:26px;margin-top:30px;
+  box-shadow:0 4px 12px rgba(29,63,125,.2);
+}
+table.req{
+  width:100%;border-collapse:collapse;font-size:14px;
+}
+table.req th{
+  width:160px;text-align:left;vertical-align:top;
+  color:var(--navy);font-weight:900;
+  background:#eaf5fd;border-radius:12px;
+  padding:12px 16px;
+}
+table.req td{padding:12px 16px 20px;color:#444;}
+table.req tr:last-child td{padding-bottom:12px;}
+table.req td ul{list-style:none;}
+table.req td li{padding-left:1.2em;position:relative;}
+table.req td li::before{content:"🌼";position:absolute;left:0;font-size:11px;top:4px;}
+.req-note{font-size:12px;color:#eaf6ff;text-align:center;margin-top:14px;font-weight:700;}
+
+/* ===== 応募フォーム ===== */
+.entry{background:var(--cream);}
+.form-card{
+  background:#fff;border-radius:24px;padding:30px 26px;margin-top:30px;
+  border:3px solid var(--pale-green);
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+  max-width:640px;margin-left:auto;margin-right:auto;
+}
+.form-row{margin-bottom:20px;}
+.form-row label{
+  display:block;font-size:14px;font-weight:900;color:var(--navy);margin-bottom:6px;
+}
+.form-row label .req-tag{
+  font-size:10px;color:#fff;background:var(--red);
+  border-radius:999px;padding:1px 10px;margin-left:8px;vertical-align:2px;
+}
+.form-row input,
+.form-row select,
+.form-row textarea{
+  width:100%;font-family:inherit;font-size:15px;
+  border:2px solid #d5e5f0;border-radius:14px;
+  padding:12px 14px;background:#fbfdff;color:#333;
+  transition:border-color .2s;
+}
+.form-row input:focus,
+.form-row select:focus,
+.form-row textarea:focus{outline:none;border-color:var(--sky);}
+.form-row textarea{min-height:120px;resize:vertical;}
+.form-submit{text-align:center;margin-top:26px;}
+.btn-submit{
+  font-family:inherit;font-size:17px;font-weight:900;letter-spacing:.1em;
+  color:#fff;background:linear-gradient(180deg,#4fae5f,var(--green));
+  border:none;border-radius:999px;padding:14px 56px;cursor:pointer;
+  box-shadow:0 4px 0 #2e8340;transition:transform .1s,box-shadow .1s;
+}
+.btn-submit:active{transform:translateY(3px);box-shadow:0 1px 0 #2e8340;}
+.form-note{font-size:12px;color:#888;text-align:center;margin-top:14px;}
+.form-thanks{
+  display:none;text-align:center;background:#e8f7e8;color:var(--green);
+  font-weight:900;border-radius:14px;padding:16px;margin-top:18px;font-size:15px;
+}
+
+/* ===== 園見学CTA ===== */
+.visit{
+  background:var(--navy);color:#fff;text-align:center;
+  padding:60px 16px 70px;position:relative;
+}
+.visit h2{font-size:clamp(22px,5vw,30px);font-weight:900;letter-spacing:.1em;}
+.visit p{font-size:14px;font-weight:700;margin:14px auto 0;max-width:560px;color:#cfe3ff;}
+.btn-visit{
+  display:inline-block;margin-top:28px;
+  font-size:clamp(18px,4.5vw,24px);font-weight:900;letter-spacing:.12em;
+  color:var(--navy);background:linear-gradient(180deg,#ffe98a,#ffd23e);
+  border-radius:999px;padding:18px 54px;text-decoration:none;
+  box-shadow:0 5px 0 #c99f1a,0 8px 18px rgba(0,0,0,.3);
+  transition:transform .1s,box-shadow .1s;
+}
+.btn-visit:active{transform:translateY(4px);box-shadow:0 1px 0 #c99f1a;}
+.visit .tel{margin-top:22px;font-size:13px;color:#cfe3ff;font-weight:700;}
+.visit .tel strong{font-size:20px;color:#fff;letter-spacing:.08em;}
+.visit .stars{font-size:22px;letter-spacing:1em;margin-bottom:10px;}
+
+/* ===== フッター ===== */
+.site-footer{
+  background:#152e5c;color:#cfe3ff;text-align:center;
+  padding:26px 16px 90px;font-size:12px;font-weight:700;
+}
+.site-footer .fname{font-size:15px;font-weight:900;color:#fff;}
+.site-footer a{color:#9fc6ff;}
+
+/* ===== ロケット(上へ戻る) ===== */
+.to-top{
+  position:fixed;right:16px;bottom:18px;z-index:50;
+  width:54px;height:54px;border-radius:50%;
+  background:#fff;border:3px solid var(--pale-blue);
+  font-size:26px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 3px 10px rgba(0,0,0,.2);
+  text-decoration:none;
+}
+
+/* ===== スマホ対応 ===== */
+@media (max-width:720px){
+  .feature-cards{grid-template-columns:1fr;}
+  .interview-grid{grid-template-columns:1fr;}
+  .timeline::before{left:16px;}
+  .tl-item{flex-direction:column;gap:8px;}
+  .tl-time{width:96px;margin-left:34px;font-size:14px;}
+  .tl-body{margin-left:34px;width:calc(100% - 34px);}
+  table.req,table.req tbody,table.req tr,table.req th,table.req td{display:block;width:100%;}
+  table.req th{margin-top:14px;padding:8px 14px;}
+  table.req tr:first-child th{margin-top:0;}
+  table.req td{padding:10px 6px 4px;}
+  .req-table-wrap{padding:20px 16px;}
+  .school-name h1{font-size:24px;}
+  .pandas{font-size:28px;}
+}
+</style>
+</head>
+<body id="top">
+
+<!-- ヘッダー -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="logo-row">
+      <div class="logo-mark">中央幼</div>
+      <div class="school-name">
+        <span class="corp">学校法人大聖学園 認定こども園</span>
+        <h1>中央幼稚園</h1>
+      </div>
+      <div class="pandas" aria-hidden="true">🐼🐼</div>
+    </div>
+    <p class="header-tagline">食育・英会話遊び・水泳教室・リズム遊び・劇遊び・茶道・坐禅・園外保育などを行っています。</p>
+    <span class="recruit-badge">採用特設ページ</span>
+  </div>
+</header>
+
+<!-- ヒーロー -->
+<div class="hero">
+  <div class="cloud-edge" aria-hidden="true"></div>
+  <span class="float-cloud c1" aria-hidden="true">☁️</span>
+  <span class="float-cloud c2" aria-hidden="true">☁️</span>
+  <h2>せんせいに、なろう。</h2>
+  <p class="lead">「正しく 強く 仲良く」。子どもたちの毎日に寄りそいながら、あなた自身も成長できる場所です。わたしたちと一緒に働きませんか?</p>
+  <div class="hero-panda" aria-hidden="true">🐼</div>
+</div>
+
+<!-- 園の特色 -->
+<section class="about">
+  <div class="container">
+    <div class="sec-title">
+      <span class="cloud-deco" aria-hidden="true">☁️</span>
+      <span class="en">ABOUT</span><br>
+      <h2>中央幼稚園ってこんな園</h2>
+    </div>
+    <p class="sec-lead">おしゃか様の教えを保育に活かした「ひとづくり教育」。3つの特長ある保育で、子どもたちの「生きる力」を育てています。</p>
+    <div class="feature-cards">
+      <div class="feature-card b-blue">
+        <div class="fc-icon" aria-hidden="true">🍵</div>
+        <h3>徳育保育</h3>
+        <p>座禅・茶道などを通して、落ち着きと感謝の気持ち、あいさつのできる子を育てます。</p>
+      </div>
+      <div class="feature-card b-green">
+        <div class="fc-icon" aria-hidden="true">🏊</div>
+        <h3>のびのび保育(体育)</h3>
+        <p>園外保育や年間を通しての水泳教室で、思いっきり体を動かして遊びます。</p>
+      </div>
+      <div class="feature-card b-red">
+        <div class="fc-icon" aria-hidden="true">🎭</div>
+        <h3>めざまし保育(知育)</h3>
+        <p>劇遊び・鼓笛マーチングバンド・英会話遊び・食育などにみんなで挑戦します。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 先生の1日 -->
+<section class="day" id="day">
+  <div class="cloud-edge cream" style="margin:-56px -16px 40px;" aria-hidden="true"></div>
+  <div class="container">
+    <div class="sec-title">
+      <span class="en">SCHEDULE</span><br>
+      <h2>先生の1日</h2>
+    </div>
+    <p class="sec-lead">ある1日のスケジュールをご紹介します。(担当や時期により変わります)</p>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-time">7:30</div>
+        <div class="tl-body">
+          <h3><span class="emoji">🌅</span>出勤・開園準備</h3>
+          <p>保育室の換気・清掃、今日の活動の準備をします。</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">8:30</div>
+        <div class="tl-body">
+          <h3><span class="emoji">🚌</span>登園・バス出迎え</h3>
+          <p>「おはようございます!」元気なあいさつで子どもたちをお出迎え。</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">10:00</div>
+        <div class="tl-body">
+          <h3><span class="emoji">🧘</span>朝の会・主活動</h3>
+          <p>座禅で心を落ち着けてから、リズム遊びや英会話遊びなどの活動へ。</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">12:00</div>
+        <div class="tl-body">
+          <h3><span class="emoji">🍚</span>昼食・食育</h3>
+          <p>みんなで「いただきます」。食べ物への興味を育てる大切な時間です。</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">13:30</div>
+        <div class="tl-body">
+          <h3><span class="emoji">🎨</span>午後の活動・降園準備</h3>
+          <p>自由遊びや製作活動。帰りの会で今日の楽しかったことを振り返ります。</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">14:30</div>
+        <div class="tl-body">
+          <h3><span class="emoji">👋</span>降園・バス添乗</h3>
+          <p>「また明日ね!」笑顔でお見送り。バス添乗も交代で担当します。</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">15:30</div>
+        <div class="tl-body">
+          <h3><span class="emoji">🧸</span>預かり保育・クラス業務</h3>
+          <p>預かり保育の子どもたちと遊んだり、連絡帳の記入や教材準備をします。</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">17:00</div>
+        <div class="tl-body">
+          <h3><span class="emoji">📝</span>事務作業・翌日の準備</h3>
+          <p>行事の計画や壁面製作など。先輩の先生と相談しながら進められます。</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">18:00</div>
+        <div class="tl-body">
+          <h3><span class="emoji">🌙</span>退勤</h3>
+          <p>おつかれさまでした!明日も元気に子どもたちと会えますように。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 先輩インタビュー -->
+<section class="interview" id="interview">
+  <div class="container">
+    <div class="sec-title">
+      <span class="cloud-deco" aria-hidden="true">☁️</span>
+      <span class="en">INTERVIEW</span><br>
+      <h2>先輩インタビュー</h2>
+    </div>
+    <p class="sec-lead">実際に働く先生たちに、園の魅力を聞いてみました。</p>
+    <div class="interview-grid">
+
+      <!-- インタビュー1(ダミー) -->
+      <article class="iv-card">
+        <div class="iv-head">
+          <div class="iv-photo" aria-hidden="true">👩‍🏫</div><!-- ここに写真を入れてください -->
+          <div class="iv-name">
+            <h3>○○ ○○ 先生</h3>
+            <p>年少クラス担任</p>
+            <span class="badge">2022年入職</span>
+          </div>
+        </div>
+        <dl class="iv-qa">
+          <dt><span class="q">Q1</span>入職のきっかけは?</dt>
+          <dd>(ダミー文)実習でお世話になったとき、先生方があたたかく迎えてくださったのが印象的で、「ここで働きたい!」と思いました。</dd>
+          <dt><span class="q">Q2</span>仕事のやりがいは?</dt>
+          <dd>(ダミー文)昨日できなかったことが今日できるようになる瞬間に立ち会えること。子どもたちの「せんせい、みてて!」が毎日の元気の源です。</dd>
+          <dt><span class="q">Q3</span>これからの目標は?</dt>
+          <dd>(ダミー文)ピアノと製作の引き出しをもっと増やして、子どもたちがワクワクする活動をたくさん届けられる先生になりたいです。</dd>
+        </dl>
+      </article>
+
+      <!-- インタビュー2(ダミー) -->
+      <article class="iv-card">
+        <div class="iv-head">
+          <div class="iv-photo" aria-hidden="true">🧑‍🏫</div><!-- ここに写真を入れてください -->
+          <div class="iv-name">
+            <h3>△△ △△ 先生</h3>
+            <p>年長クラス担任</p>
+            <span class="badge">2018年入職</span>
+          </div>
+        </div>
+        <dl class="iv-qa">
+          <dt><span class="q">Q1</span>入職のきっかけは?</dt>
+          <dd>(ダミー文)座禅や茶道など、ほかの園にはない保育に魅力を感じたことがきっかけです。園見学で見た子どもたちの落ち着いた姿に驚きました。</dd>
+          <dt><span class="q">Q2</span>仕事のやりがいは?</dt>
+          <dd>(ダミー文)行事をやりきったあとの子どもたちの自信に満ちた表情です。鼓笛マーチングの発表は、毎年感動して泣いてしまいます。</dd>
+          <dt><span class="q">Q3</span>これからの目標は?</dt>
+          <dd>(ダミー文)後輩の先生たちが相談しやすい先輩になること。チームで支え合える職場の雰囲気をこれからも大切にしていきたいです。</dd>
+        </dl>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- 募集要項 -->
+<section class="requirements" id="requirements">
+  <div class="cloud-edge cream" style="margin:-56px -16px 40px;" aria-hidden="true"></div>
+  <div class="container">
+    <div class="sec-title">
+      <span class="en">RECRUIT</span><br>
+      <h2>募集要項</h2>
+    </div>
+    <div class="req-table-wrap">
+      <table class="req">
+        <tbody>
+          <tr>
+            <th>職種</th>
+            <td>
+              <ul>
+                <li>幼稚園教諭・保育教諭(正職員)</li>
+                <li>保育補助(パート)</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <th>給与</th>
+            <td>
+              <ul>
+                <li>正職員:月給 ○○○,○○○円〜(経験・資格による)</li>
+                <li>パート:時給 ○,○○○円〜</li>
+              </ul>
+              ※昇給年1回・賞与年2回(正職員)/通勤手当あり
+            </td>
+          </tr>
+          <tr>
+            <th>勤務時間</th>
+            <td>
+              7:30〜18:00の間でシフト制(実働8時間・休憩あり)<br>
+              ※パートは勤務時間応相談
+            </td>
+          </tr>
+          <tr>
+            <th>休日</th>
+            <td>
+              日曜・祝日、土曜(行事等により出勤の場合あり)<br>
+              夏季・年末年始休暇、有給休暇あり
+            </td>
+          </tr>
+          <tr>
+            <th>応募資格</th>
+            <td>
+              <ul>
+                <li>幼稚園教諭免許・保育士資格のいずれか、または両方をお持ちの方</li>
+                <li>保育補助は資格不問(子育て経験を活かしたい方も歓迎!)</li>
+                <li>新卒・既卒・ブランクのある方も歓迎します</li>
+              </ul>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="req-note">※給与などの詳細は面接時にご説明します。お気軽にお問い合わせください。</p>
+  </div>
+</section>
+
+<!-- 応募フォーム -->
+<section class="entry" id="entry">
+  <div class="container">
+    <div class="sec-title">
+      <span class="cloud-deco" aria-hidden="true">☁️</span>
+      <span class="en">ENTRY</span><br>
+      <h2>応募フォーム</h2>
+    </div>
+    <p class="sec-lead">下記フォームにご記入のうえ、送信してください。追って担当者よりご連絡いたします。</p>
+    <form class="form-card" id="entryForm" action="#" method="post">
+      <div class="form-row">
+        <label for="f-name">お名前<span class="req-tag">必須</span></label>
+        <input type="text" id="f-name" name="name" placeholder="例)山田 花子" required autocomplete="name">
+      </div>
+      <div class="form-row">
+        <label for="f-tel">お電話番号<span class="req-tag">必須</span></label>
+        <input type="tel" id="f-tel" name="tel" placeholder="例)090-1234-5678" required autocomplete="tel">
+      </div>
+      <div class="form-row">
+        <label for="f-mail">メールアドレス<span class="req-tag">必須</span></label>
+        <input type="email" id="f-mail" name="email" placeholder="例)hanako@example.com" required autocomplete="email">
+      </div>
+      <div class="form-row">
+        <label for="f-job">ご希望の職種<span class="req-tag">必須</span></label>
+        <select id="f-job" name="job" required>
+          <option value="">選択してください</option>
+          <option>幼稚園教諭・保育教諭(正職員)</option>
+          <option>保育補助(パート)</option>
+          <option>まだ決めていない・相談したい</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="f-message">自由記入欄</label>
+        <textarea id="f-message" name="message" placeholder="ご質問・見学希望日など、お気軽にご記入ください。"></textarea>
+      </div>
+      <div class="form-submit">
+        <button type="submit" class="btn-submit">送信する 🐼</button>
+      </div>
+      <p class="form-thanks" id="formThanks">送信ありがとうございました!担当者よりご連絡いたします。</p>
+      <p class="form-note">※現在このフォームはテスト表示です。送信処理(送信先メールアドレス等)は公開時に設定します。</p>
+    </form>
+  </div>
+</section>
+
+<!-- 園見学CTA -->
+<section class="visit" id="visit">
+  <div class="cloud-edge cream" style="margin:-60px -16px 34px;" aria-hidden="true"></div>
+  <div class="stars" aria-hidden="true">⭐🌈⭐</div>
+  <h2>まずは、園見学から。</h2>
+  <p>「いきなり応募はちょっと…」という方も大丈夫。子どもたちと先生たちの毎日を、ぜひ一度見に来てください。見学だけでも大歓迎です!</p>
+  <a class="btn-visit" href="#entry">🐼 まずは園見学から</a>
+  <p class="tel">お電話でのお申し込みも受け付けています<br><strong>0XX-XXX-XXXX</strong>(平日 9:00〜17:00)</p>
+</section>
+
+<!-- フッター -->
+<footer class="site-footer">
+  <p class="fname">学校法人大聖学園 認定こども園 中央幼稚園</p>
+  <p>食育・英会話遊び・水泳教室・リズム遊び・劇遊び・茶道・坐禅・園外保育</p>
+  <p><a href="http://chuou.s163.coreserver.jp/">園のホームページはこちら</a></p>
+</footer>
+
+<a class="to-top" href="#top" aria-label="ページの先頭へ戻る">🚀</a>
+
+<script>
+document.getElementById('entryForm').addEventListener('submit', function(e){
+  // 送信処理は未設定のため、テスト用の完了メッセージのみ表示します
+  e.preventDefault();
+  document.getElementById('formThanks').style.display = 'block';
+  this.reset();
+  document.getElementById('formThanks').scrollIntoView({behavior:'smooth', block:'center'});
+});
+</script>
+
+</body>
+</html>
