@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>エンゼルガーデン幼稚園 先生募集リール（試作）</title>
+<style>
+@font-face{font-family:"Zen Maru Gothic";src:url(fonts/ZenMaruGothic-Medium.ttf) format("truetype");font-weight:500;}
+@font-face{font-family:"Zen Maru Gothic";src:url(fonts/ZenMaruGothic-Bold.ttf) format("truetype");font-weight:700;}
+@font-face{font-family:"Zen Maru Gothic";src:url(fonts/ZenMaruGothic-Black.ttf) format("truetype");font-weight:900;}
+html,body{margin:0;height:100%;background:#222;}
+body{display:grid;place-items:center;overflow:hidden;}
+canvas{display:block;height:min(100vh,177.78vw);width:min(56.25vh,100vw);cursor:pointer;}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+'use strict';
+/* ============================================================
+   エンゼルガーデン幼稚園 先生募集リール（イラスト版試作）
+   1080x1920 / 30fps / 30s / 120BPM
+   各フレームは時刻 t だけで決まる（並列書き出し・途中再生が可能）
+   ============================================================ */
+const W = 1080, H = 1920, CX = W / 2, CY = H / 2, FPS = 30, DUR = 30;
+window.META = { W, H, FPS, FRAMES: FPS * DUR };
+const SHUTTER = 0.5 / FPS;
+const TAU = Math.PI * 2;
+const C = {
+  cream: '#FFF6E6', sky: '#BFE7F8', sky2: '#8FD2F2', leaf: '#8DCB6F', leaf2: '#63B055', leafL: '#B8E09A',
+  sun: '#FFC93C', sunD: '#FFA928', coral: '#FF8C7A', coralD: '#F0705E', pink: '#FFB9C7', navy: '#2E3A59',
+  white: '#FFFFFF', skin: '#FFE1C8', cheek: '#FF9FA8', wood: '#E2B47F', woodD: '#C98F55', lav: '#C3B3F2',
+  mint: '#DDF3E4', peach: '#FFCFB0', wall: '#FFEFD6', hair: ['#4A3228', '#2F2525', '#7A4B2E', '#5B3A2A']
+};
+
+/* ---------- math ---------- */
+const clamp = (x, a = 0, b = 1) => x < a ? a : x > b ? b : x;
+const lerp = (a, b, t) => a + (b - a) * t;
+const rm = (t, a, b) => clamp((t - a) / (b - a));
+const E = {
+  outExpo: t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t),
+  inOutCubic: t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2,
+  outCubic: t => 1 - Math.pow(1 - t, 3),
+  inCubic: t => t * t * t,
+  outBack: (t, s = 1.70158) => 1 + (s + 1) * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2),
+};
+const springOut = (x, f = 3.5, d = 7) => x <= 0 ? 0 : x >= 1 ? 1 : 1 - Math.exp(-d * x) * Math.cos(x * Math.PI * f);
+function rng(seed) {
+  return function () {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* ---------- drawing helpers ---------- */
+const FJ = (px, w = 900) => `${w} ${px}px "Zen Maru Gothic"`;
+function setText(ctx, font, align = 'left', base = 'alphabetic') { ctx.font = font; ctx.letterSpacing = '0px'; ctx.textAlign = align; ctx.textBaseline = base; }
+function lay(ctx, str, font) {
+  setText(ctx, font);
+  const ch = [...str], xs = [], ws = [];
+  for (let i = 0; i < ch.length; i++) xs.push(ctx.measureText(ch.slice(0, i).join('')).width);
+  for (let i = 0; i < ch.length; i++) ws.push(ctx.measureText(ch.slice(0, i + 1).join('')).width - xs[i]);
+  return { ch, xs, ws, w: ctx.measureText(str).width };
+}
+function bg(ctx, c) { ctx.fillStyle = c; ctx.fillRect(-200, -200, W + 400, H + 400); }
+function vgrad(ctx, top, bot, y0 = 0, y1 = H) {
+  const g = ctx.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, top); g.addColorStop(1, bot);
+  ctx.fillStyle = g; ctx.fillRect(-200, -200, W + 400, H + 400);
+}
+function rrect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function circle(ctx, x, y, r, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, Math.max(0, r), 0, TAU); ctx.fill(); }
+
+// sticker-style caption: each letter pops in with a spring
+function sticker(ctx, str, x, y, px, t0, t, o = {}) {
+  const f = FJ(px, o.w || 900), L = lay(ctx, str, f);
+  const x0 = x - L.w / 2, stag = o.stag ?? .035;
+  const col = o.colors || [];
+  for (let i = 0; i < L.ch.length; i++) {
+    const p = rm(t, t0 + i * stag, t0 + i * stag + .42);
+    if (p <= 0) continue;
+    const s = Math.max(0, E.outBack(p, 2.4));
+    ctx.save();
+    ctx.translate(x0 + L.xs[i] + L.ws[i] / 2, y + (1 - E.outCubic(p)) * 40);
+    ctx.rotate((1 - p) * .35 * (i % 2 ? 1 : -1) + Math.sin(t * 3 + i) * .015);
+    ctx.scale(s, s);
+    setText(ctx, f, 'center', 'middle');
+    ctx.lineJoin = 'round'; ctx.lineWidth = o.sw ?? px * .22; ctx.strokeStyle = o.stroke || C.white;
+    ctx.strokeText(L.ch[i], 0, 0);
+    ctx.fillStyle = col[i] || o.fill || C.navy; ctx.fillText(L.ch[i], 0, 0);
+    ctx.restore();
+  }
+}
+function caption(ctx, lines, t0, t, o = {}) {
+  const px = o.px || 88, y0 = o.y || 380, lh = px * 1.28;
+  lines.forEach((ln, k) => sticker(ctx, ln, CX, y0 + k * lh, px, t0 + k * .18, t, o));
+}
+function bubble(ctx, x, y, str, px, t0, t, o = {}) {
+  const p = rm(t, t0, t0 + .35); if (p <= 0) return;
+  const s = Math.max(0, E.outBack(p, 2.2));
+  setText(ctx, FJ(px, 900));
+  const tw = ctx.measureText(str).width, w = tw + px * 1.3, h = px * 2;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t * 4 + x) * .03); ctx.scale(s, s);
+  ctx.fillStyle = 'rgba(46,58,89,.12)'; rrect(ctx, -w / 2 + 6, -h / 2 + 10, w, h, h / 2); ctx.fill();
+  ctx.fillStyle = o.bg || C.white;
+  const tx = o.tail ?? -w * .25;
+  ctx.beginPath(); ctx.moveTo(tx - 22, h / 2 - 8); ctx.lineTo(tx + (o.tailDir || -1) * 34, h / 2 + 34); ctx.lineTo(tx + 22, h / 2 - 8); ctx.fill();
+  rrect(ctx, -w / 2, -h / 2, w, h, h / 2); ctx.fill();
+  ctx.fillStyle = o.fg || C.navy; setText(ctx, FJ(px, 900), 'center', 'middle'); ctx.fillText(str, 0, px * .05);
+  ctx.restore();
+}
+function cloud(ctx, x, y, s, a = 1) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.globalAlpha *= a; ctx.fillStyle = C.white;
+  ctx.beginPath();
+  ctx.arc(-70, 10, 50, 0, TAU); ctx.arc(0, -20, 70, 0, TAU); ctx.arc(75, 5, 55, 0, TAU); ctx.arc(10, 25, 55, 0, TAU);
+  ctx.fill(); ctx.restore();
+}
+function sunFace(ctx, x, y, r, t, face = 1, rays = 1) {
+  if (rays > 0) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(t * .4); ctx.fillStyle = C.sun;
+    for (let k = 0; k < 12; k++) {
+      ctx.rotate(TAU / 12);
+      const len = r * (.35 + .08 * Math.sin(t * 5 + k)) * rays;
+      rrect(ctx, -r * .09, -r - 14 - len, r * .18, len, r * .09); ctx.fill();
+    }
+    ctx.restore();
+  }
+  circle(ctx, x, y, r, C.sun);
+  circle(ctx, x - r * .25, y - r * .28, r * .28, 'rgba(255,255,255,.35)');
+  if (face > 0) {
+    ctx.save(); ctx.translate(x, y); ctx.scale(face, face);
+    ctx.fillStyle = C.navy;
+    const bl = (t * .5 % 1) < .04 ? .2 : 1;
+    ctx.beginPath(); ctx.ellipse(-r * .3, -r * .08, r * .07, r * .1 * bl, 0, 0, TAU); ctx.ellipse(r * .3, -r * .08, r * .07, r * .1 * bl, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = C.navy; ctx.lineWidth = r * .07; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, r * .12, r * .22, .2, Math.PI - .2); ctx.stroke();
+    circle(ctx, -r * .52, r * .12, r * .1, 'rgba(255,140,122,.55)'); circle(ctx, r * .52, r * .12, r * .1, 'rgba(255,140,122,.55)');
+    ctx.restore();
+  }
+}
+function hill(ctx, y, col, amp, ph, freq = .004) {
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(-100, H + 200); ctx.lineTo(-100, y);
+  for (let x = -100; x <= W + 100; x += 20) ctx.lineTo(x, y - amp * Math.sin(x * freq + ph));
+  ctx.lineTo(W + 100, H + 200); ctx.closePath(); ctx.fill();
+}
+function tree(ctx, x, y, s, t) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillStyle = C.woodD; rrect(ctx, -18, -170, 36, 175, 14); ctx.fill();
+  ctx.rotate(Math.sin(t * 1.6 + x) * .03);
+  ctx.fillStyle = C.leaf2; ctx.beginPath(); ctx.arc(0, -250, 110, 0, TAU); ctx.arc(-80, -190, 75, 0, TAU); ctx.arc(80, -190, 75, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.beginPath(); ctx.arc(-30, -290, 45, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+function flower(ctx, x, y, s, col, p, t) {
+  if (p <= 0) return;
+  const g = E.outBack(p, 2);
+  ctx.save(); ctx.translate(x, y); ctx.scale(s * g, s * g); ctx.rotate(Math.sin(t * 2 + x) * .08);
+  ctx.strokeStyle = C.leaf2; ctx.lineWidth = 7; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -60); ctx.stroke();
+  ctx.translate(0, -70); ctx.rotate(t * .8);
+  ctx.fillStyle = col; for (let k = 0; k < 5; k++) { ctx.rotate(TAU / 5); ctx.beginPath(); ctx.arc(0, -17, 14, 0, TAU); ctx.fill(); }
+  circle(ctx, 0, 0, 11, C.sun);
+  ctx.restore();
+}
+function butterfly(ctx, x, y, t, col) {
+  const f = Math.abs(Math.sin(t * 16));
+  ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t * 2) * .2);
+  ctx.fillStyle = col;
+  ctx.save(); ctx.scale(.3 + .7 * f, 1); ctx.beginPath(); ctx.ellipse(-16, -8, 16, 12, -.4, 0, TAU); ctx.ellipse(-12, 10, 11, 9, .4, 0, TAU); ctx.ellipse(16, -8, 16, 12, .4, 0, TAU); ctx.ellipse(12, 10, 11, 9, -.4, 0, TAU); ctx.fill(); ctx.restore();
+  ctx.fillStyle = C.navy; rrect(ctx, -3, -16, 6, 32, 3); ctx.fill();
+  ctx.restore();
+}
+function bird(ctx, x, y, t) {
+  const f = Math.sin(t * 14) * .5;
+  ctx.strokeStyle = C.navy; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(x - 26, y - 14 * f - 4); ctx.quadraticCurveTo(x - 10, y - 12, x, y); ctx.quadraticCurveTo(x + 10, y - 12, x + 26, y - 14 * f - 4); ctx.stroke();
+}
+function star(ctx, x, y, r, rot, col) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.fillStyle = col; ctx.beginPath();
+  for (let k = 0; k < 10; k++) { const rr = k % 2 ? r * .45 : r, a = k / 10 * TAU - Math.PI / 2; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+  ctx.closePath(); ctx.lineJoin = 'round'; ctx.strokeStyle = col; ctx.lineWidth = r * .25; ctx.stroke(); ctx.fill(); ctx.restore();
+}
+function heart(ctx, x, y, r, col) {
+  ctx.save(); ctx.translate(x, y); ctx.fillStyle = col; ctx.beginPath();
+  ctx.moveTo(0, r * .9); ctx.bezierCurveTo(-r * 1.6, -r * .1, -r * .6, -r * 1.3, 0, -r * .45); ctx.bezierCurveTo(r * .6, -r * 1.3, r * 1.6, -r * .1, 0, r * .9);
+  ctx.fill(); ctx.restore();
+}
+// falling confetti
+function confetti(ctx, t, t0, n, seed, o = {}) {
+  const u = t - t0; if (u < 0) return;
+  const r = rng(seed), cols = [C.coral, C.sun, C.sky2, C.leaf, C.lav, C.pink];
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + (r() - .5) * (o.spread ?? 2.4), v = 500 + r() * 900, col = cols[i % cols.length], sp = (r() - .5) * 12, ph = r() * TAU, sz = 12 + r() * 14;
+    let x, y;
+    if (o.burst) {
+      const k = (1 - Math.exp(-3 * u)) / 3;
+      x = o.x + Math.cos(a) * v * k + Math.sin(u * 3 + ph) * 30; y = o.y + Math.sin(a) * v * k + 260 * u * u;
+    } else { x = r() * W + Math.sin(u * 2 + ph) * 40; y = -60 + ((u * (140 + r() * 120) + r() * H) % (H + 120)); }
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ph + u * sp); ctx.scale(1, Math.cos(u * 6 + ph));
+    ctx.fillStyle = col; ctx.globalAlpha = o.burst ? clamp(2.4 - u) : 1;
+    ctx.fillRect(-sz / 2, -sz / 4, sz, sz / 2); ctx.restore();
+  }
+}
+
+/* ---------- characters ---------- */
+// kid: y = feet. o = {smock, hat, hair, style, walk, wave, armsUp, together, flip, seed}
+function kid(ctx, x, y, s, o, t) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s * (o.flip ? -1 : 1), s);
+  const walking = o.walk != null, ph = o.walk || 0;
+  ctx.translate(0, -(walking ? Math.abs(Math.sin(ph)) * 10 : (o.bob || 0)));
+  const la = walking ? Math.sin(ph) * .5 : 0;
+  // legs
+  for (const [sx, a] of [[-18, la], [18, -la]]) {
+    ctx.save(); ctx.translate(sx, -62); ctx.rotate(a);
+    ctx.fillStyle = C.skin; rrect(ctx, -9, 0, 18, 56, 9); ctx.fill();
+    ctx.fillStyle = o.shoe || C.coralD; ctx.beginPath(); ctx.ellipse(6, 58, 16, 9, 0, 0, TAU); ctx.fill();
+    ctx.restore();
+  }
+  // arms (behind body when down)
+  const shoulder = [[-36, -140], [36, -140]];
+  const arm = (side, ang) => {
+    const [sx, sy] = shoulder[side];
+    ctx.save(); ctx.translate(sx, sy); ctx.rotate(ang);
+    ctx.fillStyle = o.smock; rrect(ctx, -11, -6, 22, 34, 11); ctx.fill();
+    ctx.fillStyle = C.skin; rrect(ctx, -9, 22, 18, 36, 9); ctx.fill();
+    circle(ctx, 0, 60, 12, C.skin);
+    ctx.restore();
+  };
+  let aL = .35 + (walking ? Math.sin(ph) * .45 : 0), aR = -.35 - (walking ? Math.sin(ph) * .45 : 0);
+  if (o.wave) aR = -2.5 + Math.sin(t * 13 + (o.seed || 0)) * .45;
+  if (o.armsUp) { aL = 2.7 + Math.sin(t * 10) * .1; aR = -2.7 - Math.sin(t * 10) * .1; }
+  if (o.together) { aL = -.55; aR = .55; }
+  arm(0, aL); arm(1, aR);
+  // body (smock)
+  ctx.fillStyle = o.smock; ctx.beginPath();
+  ctx.moveTo(-34, -150); ctx.lineTo(34, -150); ctx.quadraticCurveTo(52, -100, 58, -62); ctx.quadraticCurveTo(0, -48, -58, -62); ctx.quadraticCurveTo(-52, -100, -34, -150); ctx.fill();
+  ctx.fillStyle = C.white; ctx.beginPath(); ctx.moveTo(-26, -152); ctx.lineTo(0, -128); ctx.lineTo(26, -152); ctx.closePath(); ctx.fill();
+  circle(ctx, 0, -100, 5, 'rgba(255,255,255,.8)');
+  if (o.together) { circle(ctx, 0, -104, 14, C.skin); }
+  // head
+  const hy = -210;
+  circle(ctx, 0, hy, 60, C.skin);
+  const hc = o.hair;
+  ctx.fillStyle = hc;
+  if (o.style === 1) { circle(ctx, -62, hy - 10, 22, hc); circle(ctx, 62, hy - 10, 22, hc); }
+  ctx.beginPath(); ctx.arc(0, hy, 62, Math.PI * 1.02, Math.PI * 1.98); ctx.quadraticCurveTo(30, hy - 20, 0, hy - 28); ctx.quadraticCurveTo(-30, hy - 18, -62, hy - 4); ctx.fill();
+  if (o.style === 2) { ctx.beginPath(); ctx.arc(-40, hy - 44, 22, 0, TAU); ctx.arc(-10, hy - 58, 22, 0, TAU); ctx.fill(); }
+  if (o.hat) {
+    ctx.fillStyle = '#FFD84D';
+    ctx.beginPath(); ctx.arc(0, hy - 18, 60, Math.PI, 0); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, hy - 18, 82, 16, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = C.coral; ctx.fillRect(-58, hy - 34, 116, 12);
+  }
+  // face
+  const blink = ((t * .35 + (o.seed || 0) * .37) % 1) < .035 ? .15 : 1;
+  ctx.fillStyle = C.navy; ctx.beginPath();
+  ctx.ellipse(-20, hy + 4, 6, 8 * blink, 0, 0, TAU); ctx.ellipse(20, hy + 4, 6, 8 * blink, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = C.navy; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(0, hy + 20, o.open ? 12 : 10, .15, Math.PI - .15); if (o.open) { ctx.closePath(); ctx.fillStyle = '#E4606A'; ctx.fill(); } ctx.stroke();
+  circle(ctx, -36, hy + 20, 10, 'rgba(255,140,150,.55)'); circle(ctx, 36, hy + 20, 10, 'rgba(255,140,150,.55)');
+  ctx.restore();
+}
+function teacher(ctx, x, y, s, o, t) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s * (o.flip ? -1 : 1), s);
+  ctx.translate(0, -Math.abs(Math.sin(t * 2.2)) * 4);
+  // legs
+  ctx.fillStyle = '#6D7FA8'; rrect(ctx, -30, -120, 26, 118, 12); ctx.fill(); rrect(ctx, 4, -120, 26, 118, 12); ctx.fill();
+  ctx.fillStyle = C.white; ctx.beginPath(); ctx.ellipse(-14, -2, 22, 11, 0, 0, TAU); ctx.ellipse(20, -2, 22, 11, 0, 0, TAU); ctx.fill();
+  // arms
+  const arm = (sx, ang) => {
+    ctx.save(); ctx.translate(sx, -290); ctx.rotate(ang);
+    ctx.fillStyle = '#FFFFFF'; rrect(ctx, -14, -8, 28, 60, 14); ctx.fill();
+    ctx.fillStyle = C.skin; rrect(ctx, -11, 44, 22, 56, 11); ctx.fill(); circle(ctx, 0, 102, 15, C.skin);
+    ctx.restore();
+  };
+  let aL = .25, aR = -.25;
+  if (o.wave) aR = -2.55 + Math.sin(t * 11) * .4;
+  if (o.clap) { const c = Math.abs(Math.sin(t * 9)); aL = -.6 - c * .3; aR = .6 + c * .3; }
+  arm(-52, aL); arm(52, aR);
+  // body: shirt + apron
+  ctx.fillStyle = '#FFFFFF'; rrect(ctx, -56, -310, 112, 200, 40); ctx.fill();
+  ctx.fillStyle = o.apron || C.coral; ctx.beginPath();
+  ctx.moveTo(-40, -280); ctx.lineTo(40, -280); ctx.lineTo(50, -200); ctx.quadraticCurveTo(64, -140, 66, -100); ctx.quadraticCurveTo(0, -84, -66, -100); ctx.quadraticCurveTo(-64, -140, -50, -200); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.35)'; rrect(ctx, -28, -190, 56, 40, 14); ctx.fill();
+  heart(ctx, 0, -172, 10, C.white);
+  // head
+  const hy = -370;
+  circle(ctx, 0, hy, 52, C.skin);
+  ctx.fillStyle = o.hair || C.hair[3];
+  ctx.beginPath(); ctx.ellipse(48, hy + 6, 22, 40, .3, 0, TAU); ctx.fill(); // ponytail
+  ctx.beginPath(); ctx.arc(0, hy, 55, Math.PI * 1.0, Math.PI * 2.0); ctx.quadraticCurveTo(20, hy - 26, -10, hy - 22); ctx.quadraticCurveTo(-40, hy - 16, -55, hy + 4); ctx.fill();
+  circle(ctx, 40, hy - 36, 10, C.coral);
+  const blink = ((t * .3 + .5) % 1) < .035 ? .15 : 1;
+  ctx.fillStyle = C.navy; ctx.beginPath(); ctx.ellipse(-18, hy + 4, 5, 7 * blink, 0, 0, TAU); ctx.ellipse(18, hy + 4, 5, 7 * blink, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = C.navy; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(0, hy + 18, 11, .2, Math.PI - .2); ctx.stroke();
+  circle(ctx, -32, hy + 18, 9, 'rgba(255,140,150,.5)'); circle(ctx, 32, hy + 18, 9, 'rgba(255,140,150,.5)');
+  ctx.restore();
+}
+const KIDS = [
+  { smock: C.sky2, hat: true, hair: C.hair[0], style: 0, seed: 1 },
+  { smock: C.pink, hat: false, hair: C.hair[1], style: 1, seed: 2 },
+  { smock: '#9FD98A', hat: true, hair: C.hair[2], style: 2, seed: 3 },
+  { smock: C.lav, hat: false, hair: C.hair[0], style: 1, seed: 4 },
+];
+const K = (i, extra) => Object.assign({}, KIDS[i % 4], extra);
+
+/* ---------- 園舎 ---------- */
+function building(ctx, x, y, s, t, grow = 1) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s * grow);
+  const w = 700, h = 440;
+  ctx.fillStyle = 'rgba(46,58,89,.10)'; rrect(ctx, -w / 2 + 14, -h + 14, w, h, 30); ctx.fill();
+  ctx.fillStyle = '#FFFDF7'; rrect(ctx, -w / 2, -h, w, h, 30); ctx.fill();
+  // roof
+  ctx.fillStyle = C.coral; ctx.beginPath();
+  ctx.moveTo(-w / 2 - 40, -h + 20); ctx.quadraticCurveTo(-w / 2 - 50, -h - 10, -w / 2, -h - 30);
+  ctx.lineTo(-30, -h - 190); ctx.quadraticCurveTo(0, -h - 210, 30, -h - 190);
+  ctx.lineTo(w / 2, -h - 30); ctx.quadraticCurveTo(w / 2 + 50, -h - 10, w / 2 + 40, -h + 20); ctx.closePath(); ctx.fill();
+  // clock
+  circle(ctx, 0, -h - 70, 56, C.white); circle(ctx, 0, -h - 70, 46, C.cream);
+  ctx.strokeStyle = C.navy; ctx.lineWidth = 7; ctx.lineCap = 'round';
+  const a1 = t * 2.5, a2 = t * .4;
+  ctx.beginPath(); ctx.moveTo(0, -h - 70); ctx.lineTo(Math.sin(a1) * 34, -h - 70 - Math.cos(a1) * 34); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -h - 70); ctx.lineTo(Math.sin(a2) * 22, -h - 70 - Math.cos(a2) * 22); ctx.stroke();
+  // angel mark on the ridge: halo + wings
+  ctx.save(); ctx.translate(0, -h - 238); ctx.rotate(Math.sin(t * 2) * .05);
+  ctx.strokeStyle = C.sun; ctx.lineWidth = 9; ctx.beginPath(); ctx.ellipse(0, -30, 34, 11, 0, 0, TAU); ctx.stroke();
+  wings(ctx, 0, 14, .7, t);
+  ctx.restore();
+  // windows
+  for (const wx of [-230, 230]) {
+    ctx.fillStyle = C.sun; rrect(ctx, wx - 80, -h + 90, 160, 130, 26); ctx.fill();
+    ctx.fillStyle = C.sky; rrect(ctx, wx - 68, -h + 102, 136, 106, 18); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(wx - 3, -h + 102, 6, 106); ctx.fillRect(wx - 68, -h + 152, 136, 6);
+  }
+  // door
+  ctx.fillStyle = C.wood; ctx.beginPath(); ctx.moveTo(-80, 0); ctx.lineTo(-80, -170); ctx.arc(0, -170, 80, Math.PI, 0); ctx.lineTo(80, 0); ctx.fill();
+  ctx.fillStyle = C.woodD; ctx.fillRect(-3, -240, 6, 240); circle(ctx, -22, -110, 7, C.navy); circle(ctx, 22, -110, 7, C.navy);
+  // flower boxes
+  for (const wx of [-230, 230]) { ctx.fillStyle = C.leaf2; rrect(ctx, wx - 90, -h + 222, 180, 26, 12); ctx.fill(); for (let k = -2; k <= 2; k++) circle(ctx, wx + k * 34, -h + 222, 12, k % 2 ? C.pink : C.coral); }
+  ctx.restore();
+}
+function wings(ctx, x, y, s, t) {
+  const f = Math.sin(t * 6) * .12;
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  for (const d of [-1, 1]) {
+    ctx.save(); ctx.scale(d, 1); ctx.rotate(-f);
+    ctx.fillStyle = C.white; ctx.strokeStyle = C.navy; ctx.lineWidth = 6; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(8, 0);
+    ctx.bezierCurveTo(40, -60, 110, -70, 130, -40); ctx.bezierCurveTo(120, -30, 110, -25, 100, -20);
+    ctx.bezierCurveTo(110, -12, 108, -2, 96, 4); ctx.bezierCurveTo(100, 14, 90, 24, 74, 26); ctx.bezierCurveTo(50, 40, 20, 30, 8, 0);
+    ctx.fill(); ctx.stroke(); ctx.restore();
+  }
+  ctx.restore();
+}
+
+/* ============================================================
+   SCENES
+   ============================================================ */
+const STARTS = [0, 3.5, 7.5, 11.5, 15.5, 19.5, 23.5, 27];
+
+// S1 つかみ: ボールが跳ねて太陽に、先生を募集しています
+function s1(ctx, t) {
+  vgrad(ctx, C.cream, C.sky);
+  // soft rays behind
+  ctx.save(); ctx.translate(CX, 1180); ctx.rotate(t * .15); ctx.fillStyle = 'rgba(255,255,255,.35)';
+  for (let k = 0; k < 12; k += 2) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 1400, k / 12 * TAU, (k + 1) / 12 * TAU); ctx.fill(); }
+  ctx.restore();
+  cloud(ctx, lerp(-220, 170, E.outCubic(rm(t, .2, 1.3))) + t * 8, 1020, 1.1);
+  cloud(ctx, lerp(1300, 880, E.outCubic(rm(t, .4, 1.5))) - t * 6, 880, .8);
+  // ball -> sun
+  const floor = 1440, r0 = 46;
+  let by, sq = 1, rad = r0, face = 0, rays = 0;
+  if (t < .35) { by = lerp(-100, floor - r0, E.inCubic(rm(t, 0, .35))); }
+  else if (t < .75) { const k = rm(t, .35, .75); by = floor - r0 - 380 * 4 * k * (1 - k); }
+  else if (t < 1.0) { const k = rm(t, .75, 1.0); by = floor - r0 - 150 * 4 * k * (1 - k); }
+  else {
+    const p = springOut(rm(t, 1.0, 1.7), 2.5, 6);
+    by = lerp(floor - r0, 1180, E.outCubic(rm(t, 1.0, 1.5)));
+    rad = lerp(r0, 150, p); face = E.outBack(rm(t, 1.35, 1.6), 2); rays = E.outBack(rm(t, 1.45, 1.85), 2);
+  }
+  for (const it of [.35, .75, 1.0]) { const d = t - it; if (d >= 0 && d < .14) sq = 1 - .35 * Math.sin(d / .14 * Math.PI); }
+  if (t < 1.0) {
+    ctx.save(); ctx.translate(CX, by + r0); ctx.scale(1 / Math.sqrt(sq), sq);
+    circle(ctx, 0, -r0, r0, C.sun); circle(ctx, -14, -r0 - 16, 13, 'rgba(255,255,255,.5)'); ctx.restore();
+  } else sunFace(ctx, CX, by, rad, t, face, rays);
+  // kids peek from behind the hill
+  [[250, 2.1, 0], [540, 2.3, 1], [830, 2.5, 2]].forEach(([x, t0, i]) => {
+    const p = springOut(rm(t, t0, t0 + .6), 3, 6);
+    if (p > 0) kid(ctx, x, 1480 + 250 - p * 190, 1, K(i, { wave: t > t0 + .4 }), t);
+  });
+  hill(ctx, 1480, C.leaf, 30, .5);
+  hill(ctx, 1560, C.leaf2, 22, 2.2, .006);
+  // text
+  const pp = E.outBack(rm(t, .55, .9), 2);
+  if (pp > 0) {
+    ctx.save(); ctx.translate(CX, 330); ctx.scale(pp, pp);
+    setText(ctx, FJ(46, 900)); const tw = ctx.measureText('エンゼルガーデン幼稚園で').width;
+    ctx.fillStyle = C.navy; rrect(ctx, -tw / 2 - 36, -46, tw + 72, 92, 46); ctx.fill();
+    ctx.fillStyle = C.white; setText(ctx, FJ(46, 900), 'center', 'middle'); ctx.fillText('エンゼルガーデン幼稚園で', 0, 2);
+    ctx.restore();
+  }
+  sticker(ctx, 'いっしょに働く', CX, 500, 112, .9, t);
+  sticker(ctx, '先生を', CX, 650, 150, 1.2, t, { colors: [C.coral, C.coral] });
+  sticker(ctx, 'さがしています。', CX, 800, 104, 1.5, t);
+}
+
+// S2 朝のおむかえ
+function s2(ctx, t) {
+  const u = t - 3.5;
+  vgrad(ctx, '#CDEEFB', C.cream, 0, 1400);
+  sunFace(ctx, 900, 640, 70, t, 1, 1);
+  cloud(ctx, 180 + u * 14, 640, .7); cloud(ctx, 700 + u * 10, 560, .5);
+  bird(ctx, -60 + u * 330, 720 + Math.sin(u * 3) * 20, t); bird(ctx, -160 + u * 330, 760 + Math.sin(u * 3 + 1) * 20, t + .2);
+  hill(ctx, 1340, C.leafL, 18, 1);
+  building(ctx, CX, 1360, .98, t, springOut(rm(u, -.1, .5), 3, 6));
+  ctx.fillStyle = C.leaf; ctx.fillRect(-200, 1360, W + 400, 700);
+  ctx.fillStyle = '#F6E3C4'; ctx.beginPath(); ctx.moveTo(470, 1360); ctx.lineTo(610, 1360); ctx.lineTo(760, H + 100); ctx.lineTo(320, H + 100); ctx.fill();
+  for (let k = 0; k < 7; k++) flower(ctx, 60 + k * 160 + (k > 2 ? 120 : 0), 1420 + (k % 2) * 30, .8, k % 2 ? C.pink : C.sun, rm(u, .3 + k * .06, .7 + k * .06), t);
+  teacher(ctx, 240, 1540, 1.05, { wave: u > .6 }, t);
+  // kids walk in from the right and stop
+  const stops = [560, 740, 920];
+  for (let i = 2; i >= 0; i--) {
+    const start = 1250 + i * 170, speed = 330;
+    const x = Math.max(stops[i], start - speed * u);
+    const walking = x > stops[i];
+    kid(ctx, x, 1560 + i * 20, .95, K(i, { flip: false, walk: walking ? u * 9 + i : null, wave: !walking && u > 2.4 + i * .1, open: u > 2.4 }), t);
+  }
+  bubble(ctx, 330, 1010, 'おはよう！', 58, 4.5, t, { tail: -60 });
+  bubble(ctx, 760, 1050, 'おはようございます！', 50, 5.9, t, { tail: 40, tailDir: 1, bg: C.sun });
+  caption(ctx, ['朝は', '「おはよう！」から。'], 3.75, t);
+}
+
+// S3 外あそび
+function s3(ctx, t) {
+  const u = t - 7.5;
+  vgrad(ctx, C.sky, '#E9F7FC', 0, 1300);
+  sunFace(ctx, 170, 650, 64, t, 1, 1);
+  cloud(ctx, 760 - u * 12, 640, .75);
+  hill(ctx, 1200, C.leafL, 60, .8, .003);
+  tree(ctx, 110, 1260, 1.1, t); tree(ctx, 990, 1230, .95, t);
+  hill(ctx, 1330, C.leaf, 16, 2, .006);
+  // swing
+  const sx = 310, top = 1000, len = 270;
+  ctx.strokeStyle = C.woodD; ctx.lineWidth = 18; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(sx - 150, 1420); ctx.lineTo(sx - 90, top); ctx.lineTo(sx + 90, top); ctx.lineTo(sx + 150, 1420); ctx.stroke();
+  const ang = .55 * Math.sin(u * 4.2);
+  ctx.save(); ctx.translate(sx, top); ctx.rotate(ang);
+  ctx.strokeStyle = C.navy; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-40, 0); ctx.lineTo(-40, len); ctx.moveTo(40, 0); ctx.lineTo(40, len); ctx.stroke();
+  kid(ctx, 0, len + 60, .75, K(1, { open: true }), t);
+  ctx.fillStyle = C.coral; rrect(ctx, -60, len - 6, 120, 18, 9); ctx.fill();
+  ctx.restore();
+  // flowers along the grass
+  for (let k = 0; k < 8; k++) flower(ctx, 40 + k * 140, 1470 + (k % 3) * 40, .85, [C.pink, C.sun, C.coral, C.lav][k % 4], rm(u, .2 + k * .07, .6 + k * .07), t);
+  // jumping kid
+  const jy = Math.max(0, Math.sin(u * 5)) * 130;
+  kid(ctx, 720, 1510 - jy, 1, K(2, { armsUp: jy > 10, open: true }), t);
+  // ball + chaser
+  const bx = 1250 - u * 380, bY = 1520 - Math.abs(Math.sin(u * 6)) * 170;
+  circle(ctx, bx, bY - 38, 38, C.coral); ctx.fillStyle = C.white; ctx.fillRect(bx - 38, bY - 44, 76, 12);
+  kid(ctx, bx + 220, 1560, 1, K(0, { walk: u * 13, open: true }), t);
+  butterfly(ctx, 560 + Math.sin(u * 1.3) * 200, 1000 + Math.sin(u * 2.6) * 60, t, C.pink);
+  butterfly(ctx, 860 + Math.cos(u * 1.1) * 120, 920 + Math.sin(u * 2) * 50, t + .3, C.sun);
+  caption(ctx, ['園庭で、', '思いっきり。'], 7.75, t);
+}
+
+// S4 おえかき
+const DRAW = (() => {
+  const S = []; // strokes in paper coords (paper 600x440 centred)
+  const circ = (cx, cy, r, n = 60) => Array.from({ length: n + 1 }, (_, i) => [cx + Math.cos(-Math.PI / 2 + i / n * TAU) * r, cy + Math.sin(-Math.PI / 2 + i / n * TAU) * r]);
+  S.push({ pts: circ(-170, -110, 55), col: C.sunD, t0: .3, t1: .75 });
+  for (let k = 0; k < 8; k++) { const a = k / 8 * TAU; S.push({ pts: [[-170 + Math.cos(a) * 75, -110 + Math.sin(a) * 75], [-170 + Math.cos(a) * 100, -110 + Math.sin(a) * 100]], col: C.sunD, t0: .75 + k * .03, t1: .85 + k * .03 }); }
+  S.push({ pts: Array.from({ length: 30 }, (_, i) => [60 + Math.sin(i / 29 * 3) * 8, 150 - i / 29 * 190]), col: C.leaf2, t0: 1.05, t1: 1.35 });
+  S.push({ pts: Array.from({ length: 20 }, (_, i) => { const k = i / 19; return [60 + k * 70, 90 - Math.sin(k * Math.PI) * 40 - k * 20]; }), col: C.leaf2, t0: 1.35, t1: 1.5 });
+  S.push({ pts: Array.from({ length: 40 }, (_, i) => { const k = i / 39; return [-280 + k * 560, 170 + Math.sin(k * 20) * 8]; }), col: C.leaf, t0: 2.2, t1: 2.6 });
+  return S;
+})();
+const PETALS = Array.from({ length: 6 }, (_, k) => ({ a: k / 6 * TAU, t0: 1.55 + k * .07 }));
+function polyPartial(ctx, pts, p) {
+  const n = pts.length - 1, m = p * n, k = Math.floor(m);
+  ctx.beginPath(); ctx.moveTo(...pts[0]);
+  for (let i = 1; i <= k; i++) ctx.lineTo(...pts[i]);
+  let tip = pts[Math.min(k, n)];
+  if (k < n) { const f = m - k; tip = [lerp(pts[k][0], pts[k + 1][0], f), lerp(pts[k][1], pts[k + 1][1], f)]; ctx.lineTo(...tip); }
+  ctx.stroke(); return tip;
+}
+function drawing(ctx, u, t) { // paper-local drawing; returns crayon tip + colour
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  let tip = null, tipCol = null;
+  for (const s of DRAW) {
+    const p = rm(u, s.t0, s.t1); if (p <= 0) continue;
+    ctx.strokeStyle = s.col; ctx.lineWidth = 16; ctx.globalAlpha = .9;
+    const tp = polyPartial(ctx, s.pts, p);
+    ctx.lineWidth = 6; ctx.globalAlpha = .35; ctx.save(); ctx.translate(2, 3); polyPartial(ctx, s.pts, p); ctx.restore();
+    ctx.globalAlpha = 1;
+    if (p < 1) { tip = tp; tipCol = s.col; }
+  }
+  for (const pt of PETALS) {
+    const p = E.outBack(rm(u, pt.t0, pt.t0 + .2), 2.5); if (p <= 0) continue;
+    circle(ctx, 60 + Math.cos(pt.a) * 42, -60 + Math.sin(pt.a) * 42, 26 * p, C.coral);
+  }
+  const cp = E.outBack(rm(u, 1.95, 2.15), 2.5); if (cp > 0) circle(ctx, 60, -60, 20 * cp, C.sun);
+  return [tip, tipCol];
+}
+function s4(ctx, t) {
+  const u = t - 11.5;
+  bg(ctx, C.wall);
+  ctx.fillStyle = 'rgba(255,185,160,.25)'; for (let x = -40; x < W; x += 120) ctx.fillRect(x, 0, 60, H);
+  // bunting
+  ctx.strokeStyle = C.navy; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-20, 620); ctx.quadraticCurveTo(CX, 720 + Math.sin(t * 2) * 10, W + 20, 620); ctx.stroke();
+  for (let k = 0; k < 9; k++) {
+    const x = 40 + k * 125, yy = 620 + Math.sin(x / W * Math.PI) * 95 + Math.sin(t * 2) * 10 * Math.sin(x / W * Math.PI);
+    const p = E.outBack(rm(u, .05 + k * .04, .35 + k * .04), 2); if (p <= 0) continue;
+    ctx.save(); ctx.translate(x, yy); ctx.rotate(Math.sin(t * 3 + k) * .08); ctx.scale(p, p);
+    ctx.fillStyle = [C.coral, C.sun, C.sky2, C.leaf, C.lav][k % 5]; ctx.beginPath(); ctx.moveTo(-40, 0); ctx.lineTo(40, 0); ctx.lineTo(0, 80); ctx.fill(); ctx.restore();
+  }
+  // kids behind the table
+  kid(ctx, 150, 1560, 1.05, K(3, { bob: Math.abs(Math.sin(t * 3)) * 6 }), t);
+  kid(ctx, 930, 1560, 1.05, K(0, { flip: true, bob: Math.abs(Math.sin(t * 3 + 1)) * 6, open: u > 2 }), t);
+  // table
+  ctx.fillStyle = C.woodD; ctx.fillRect(-100, 1330, W + 200, 40);
+  ctx.fillStyle = C.wood; rrect(ctx, -100, 1250, W + 200, 100, 20); ctx.fill();
+  ctx.fillStyle = C.woodD; ctx.fillRect(-100, 1370, W + 200, 800);
+  // paper
+  const pp = E.outBack(rm(u, 0, .35), 1.6);
+  ctx.save(); ctx.translate(CX, 1060); ctx.rotate(-.04); ctx.scale(pp, pp);
+  ctx.fillStyle = 'rgba(46,58,89,.12)'; rrect(ctx, -300 + 10, -220 + 14, 600, 440, 18); ctx.fill();
+  ctx.fillStyle = C.white; rrect(ctx, -300, -220, 600, 440, 18); ctx.fill();
+  const [tip, tipCol] = drawing(ctx, u, t);
+  // stickers
+  [[-230, 120, 2.7, C.sun], [230, -150, 2.85, C.pink], [250, 120, 3.0, C.sky2]].forEach(([x, y, t0, c]) => {
+    const p = E.outBack(rm(u, t0, t0 + .25), 3); if (p > 0) star(ctx, x, y, 34 * p, t * .5, c);
+  });
+  if (tip) {
+    ctx.save(); ctx.translate(tip[0], tip[1]); ctx.rotate(-.7 + Math.sin(t * 30) * .06);
+    ctx.fillStyle = tipCol; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(14, -30); ctx.lineTo(-14, -30); ctx.fill();
+    rrect(ctx, -16, -170, 32, 142, 6); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(-16, -130, 32, 60);
+    ctx.restore();
+  }
+  ctx.restore();
+  // crayon box on table
+  ctx.save(); ctx.translate(820, 1300); ctx.rotate(.05);
+  [C.coral, C.sun, C.leaf, C.sky2, C.lav].forEach((c, k) => { ctx.fillStyle = c; rrect(ctx, -70 + k * 30, -70 - (k % 2) * 12, 22, 70, 6); ctx.fill(); });
+  ctx.fillStyle = C.sky2; rrect(ctx, -84, -30, 168, 60, 10); ctx.fill();
+  ctx.restore();
+  caption(ctx, ['つくって、', '描いて。'], 11.75, t);
+}
+
+// S5 お昼ごはん
+function s5(ctx, t) {
+  const u = t - 15.5;
+  bg(ctx, C.mint);
+  ctx.fillStyle = 'rgba(255,255,255,.7)';
+  for (let y = 0; y < H; y += 90) for (let x = (y / 90 % 2) * 45; x < W; x += 90) { ctx.beginPath(); ctx.arc(x, y, 10, 0, TAU); ctx.fill(); }
+  // kids behind
+  [[190, 3], [540, 1], [890, 2]].forEach(([x, i], k) => kid(ctx, x, 1400, 1.05, K(i, { together: u > 1.35 && u < 2.6, open: u > 1.4 && u < 2.4, flip: k === 2 }), t));
+  // gingham cloth
+  ctx.fillStyle = C.white; ctx.fillRect(-100, 1230, W + 200, 900);
+  ctx.fillStyle = 'rgba(255,140,122,.45)';
+  for (let x = -60; x < W + 60; x += 80) ctx.fillRect(x, 1230, 40, 900);
+  for (let y = 1230; y < H + 60; y += 80) ctx.fillRect(-100, y, W + 200, 40);
+  // bento
+  const bxp = CX, byp = 1420, bw = 560, bh = 360;
+  ctx.fillStyle = 'rgba(46,58,89,.15)'; rrect(ctx, bxp - bw / 2 + 10, byp - bh / 2 + 16, bw, bh, 40); ctx.fill();
+  ctx.fillStyle = C.coralD; rrect(ctx, bxp - bw / 2, byp - bh / 2, bw, bh, 40); ctx.fill();
+  ctx.fillStyle = '#FFF4E4'; rrect(ctx, bxp - bw / 2 + 22, byp - bh / 2 + 22, bw - 44, bh - 44, 26); ctx.fill();
+  ctx.fillStyle = C.coralD; ctx.fillRect(bxp - 8, byp - bh / 2 + 22, 16, bh - 44);
+  const pop = (t0) => Math.max(0, E.outBack(rm(u, t0, t0 + .25), 2.6));
+  // rice
+  let p = pop(.55);
+  if (p > 0) {
+    ctx.save(); ctx.translate(bxp - 128, byp); ctx.scale(p, p);
+    ctx.fillStyle = C.white; rrect(ctx, -110, -130, 220, 260, 30); ctx.fill();
+    circle(ctx, 0, 0, 30, '#E2445B');
+    ctx.fillStyle = '#2B2B2B'; for (let k = 0; k < 10; k++) ctx.fillRect(-80 + (k * 37) % 160, -100 + (k * 53) % 200, 6, 3);
+    ctx.restore();
+  }
+  // tamagoyaki
+  p = pop(.7);
+  if (p > 0) { ctx.save(); ctx.translate(bxp + 125, byp - 80); ctx.scale(p, p); for (let k = 0; k < 2; k++) { ctx.fillStyle = C.sun; rrect(ctx, -90 + k * 95, -45, 85, 85, 16); ctx.fill(); ctx.strokeStyle = C.sunD; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(-48 + k * 95, -2, 22, 0, 5); ctx.stroke(); } ctx.restore(); }
+  // broccoli
+  p = pop(.85);
+  if (p > 0) { ctx.save(); ctx.translate(bxp + 80, byp + 75); ctx.scale(p, p); ctx.fillStyle = '#A5D46A'; ctx.fillRect(-8, 0, 16, 40); ctx.fillStyle = C.leaf2; ctx.beginPath(); ctx.arc(-18, -6, 26, 0, TAU); ctx.arc(18, -6, 26, 0, TAU); ctx.arc(0, -26, 26, 0, TAU); ctx.fill(); ctx.restore(); }
+  // octopus sausage
+  p = pop(1.0);
+  if (p > 0) {
+    ctx.save(); ctx.translate(bxp + 185, byp + 70); ctx.scale(p, p); ctx.rotate(Math.sin(t * 6) * .08);
+    ctx.fillStyle = '#F2555A'; ctx.beginPath(); ctx.arc(0, -10, 38, Math.PI, 0); ctx.lineTo(38, 20); ctx.lineTo(-38, 20); ctx.fill();
+    for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.ellipse(-28 + k * 19, 32, 8, 18, 0, 0, TAU); ctx.fill(); }
+    circle(ctx, -12, -8, 5, C.navy); circle(ctx, 12, -8, 5, C.navy);
+    ctx.restore();
+  }
+  // lid flies off
+  const lp = rm(u, .3, .75);
+  if (lp < 1) {
+    ctx.save(); ctx.translate(bxp + E.inCubic(lp) * 900, byp - E.outCubic(lp) * 600); ctx.rotate(E.inCubic(lp) * 1.4);
+    ctx.fillStyle = C.coral; rrect(ctx, -bw / 2 - 6, -bh / 2 - 6, bw + 12, bh + 12, 44); ctx.fill();
+    heart(ctx, 0, 0, 50, 'rgba(255,255,255,.6)');
+    ctx.restore();
+  }
+  // steam
+  if (u > .7) {
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 10; ctx.lineCap = 'round';
+    for (let k = 0; k < 3; k++) {
+      const ph = (u * .8 + k / 3) % 1;
+      ctx.globalAlpha = Math.sin(ph * Math.PI) * clamp((u - .7) * 3);
+      ctx.beginPath();
+      for (let j = 0; j <= 12; j++) { const yy = byp - 160 - ph * 160 - j * 10; const xx = bxp - 190 + k * 60 + Math.sin(j * .6 + u * 4 + k) * 12; j ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  // chopsticks
+  ctx.save(); ctx.translate(bxp + 330, byp + 40); ctx.rotate(.15); ctx.fillStyle = C.woodD; rrect(ctx, -9, -150, 12, 300, 6); ctx.fill(); rrect(ctx, 9, -150, 12, 300, 6); ctx.fill(); ctx.restore();
+  bubble(ctx, CX, 860, 'いただきます！', 64, 17.0, t, { tail: 0, bg: C.white });
+  caption(ctx, ['お昼は、', 'みんなで。'], 15.75, t);
+}
+
+// S6 帰りの時間
+function s6(ctx, t) {
+  const u = t - 19.5;
+  vgrad(ctx, C.lav, C.peach, 0, 1350);
+  // twinkles
+  const r = rng(61);
+  for (let k = 0; k < 14; k++) {
+    const x = 60 + r() * 960, y = 620 + r() * 420, t0 = 1 + r() * 2;
+    const p = rm(u, t0, t0 + .3); if (p <= 0) continue;
+    star(ctx, x, y, (10 + r() * 10) * E.outBack(p, 3) * (.8 + .2 * Math.sin(t * 6 + k)), t * .3 + k, C.white);
+  }
+  sunFace(ctx, 760, 1240, 130, t, 1, .6);
+  hill(ctx, 1270, '#A8CF8C', 40, 2, .004);
+  building(ctx, 330, 1350, .55, t);
+  ctx.fillStyle = '#86BD6B'; ctx.fillRect(-200, 1340, W + 400, 800);
+  teacher(ctx, 210, 1560, 1.05, { wave: u > .3 }, t);
+  for (let i = 0; i < 3; i++) {
+    const x = 470 + i * 150 + Math.max(0, u - .4 - i * .15) * 170;
+    kid(ctx, x, 1580 - i * 10, .92, K(i + 1, { flip: true, walk: u * 8 + i, wave: true }), t);
+  }
+  bubble(ctx, 360, 1020, 'また明日ね！', 60, 20.3, t, { tail: -80 });
+  caption(ctx, ['「また明日ね」と', '手をふって。'], 19.75, t);
+}
+
+// S7 メッセージ
+function s7(ctx, t) {
+  const u = t - 23.5;
+  bg(ctx, C.cream);
+  ctx.save(); ctx.translate(CX, 1250); ctx.rotate(t * .2); ctx.fillStyle = 'rgba(255,201,60,.22)';
+  for (let k = 0; k < 16; k += 2) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 1500, k / 16 * TAU, (k + 1) / 16 * TAU); ctx.fill(); }
+  ctx.restore();
+  sticker(ctx, '子どもの', CX, 380, 92, 23.7, t);
+  sticker(ctx, '「できた！」を', CX, 540, 132, 24.0, t, { colors: [C.navy, C.coral, C.coral, C.coral, C.coral, C.navy, C.navy] });
+  sticker(ctx, 'いちばん近くで', CX, 700, 92, 24.6, t);
+  sticker(ctx, '見られる仕事です。', CX, 830, 92, 24.9, t);
+  // kid jumps holding the drawing up, teacher claps
+  const jy = u > .5 ? Math.max(0, Math.sin((u - .5) * 6)) * 120 * Math.exp(-(u - .5) * .4) : 0;
+  teacher(ctx, 300, 1640, 1.1, { clap: u > .6 }, t);
+  kid(ctx, 700, 1620 - jy, 1.2, K(1, { armsUp: u > .5, open: u > .5 }), t);
+  // the drawing from scene 4 held overhead
+  const dp = E.outBack(rm(u, .45, .75), 2);
+  if (dp > 0) {
+    ctx.save(); ctx.translate(700, 1620 - jy - 460); ctx.rotate(Math.sin(t * 5) * .05); ctx.scale(.42 * dp, .42 * dp);
+    ctx.fillStyle = C.white; rrect(ctx, -300, -220, 600, 440, 18); ctx.fill();
+    drawing(ctx, 10, t);
+    [[-230, 120, C.sun], [230, -150, C.pink], [250, 120, C.sky2]].forEach(([x, y, c]) => star(ctx, x, y, 34, t * .5, c));
+    ctx.restore();
+  }
+  confetti(ctx, t, 24.05, 70, 5, { burst: true, x: 700, y: 1100, spread: 2.2 });
+  for (let k = 0; k < 5; k++) {
+    const p = E.outBack(rm(u, .6 + k * .08, .9 + k * .08), 3); if (p <= 0) continue;
+    star(ctx, 480 + k * 110 + Math.sin(t * 2 + k) * 10, 1000 - (k % 2) * 60, 22 * p, t + k, [C.sun, C.coral, C.sky2][k % 3]);
+  }
+}
+
+// S8 エンドカード
+function s8(ctx, t) {
+  const u = t - 27;
+  vgrad(ctx, C.sky, '#EAF8FD');
+  cloud(ctx, 150 + u * 10, 1200, .9, .9); cloud(ctx, 950 - u * 8, 1320, .7, .9);
+  confetti(ctx, t, 26, 40, 9);
+  // emblem: halo + wings + star
+  const ep = springOut(rm(u, 0, .6), 3, 6);
+  ctx.save(); ctx.translate(CX, 470 + Math.sin(t * 2.5) * 8); ctx.scale(ep, ep);
+  ctx.strokeStyle = C.sun; ctx.lineWidth = 16; ctx.beginPath(); ctx.ellipse(0, -110, 70, 22, 0, 0, TAU); ctx.stroke();
+  wings(ctx, 0, 0, 1.25, t);
+  star(ctx, 0, 0, 72, 0, C.sun);
+  circle(ctx, -22, -4, 6, C.navy); circle(ctx, 22, -4, 6, C.navy);
+  ctx.strokeStyle = C.navy; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(0, 12, 12, .2, Math.PI - .2); ctx.stroke();
+  ctx.restore();
+  sticker(ctx, 'エンゼルガーデン幼稚園', CX, 720, 82, 27.25, t, { stag: .025 });
+  // ribbon
+  const rp = E.outBack(rm(u, .6, 1.0), 1.8);
+  if (rp > 0) {
+    ctx.save(); ctx.translate(CX, 900); ctx.scale(rp, 1);
+    ctx.fillStyle = C.coralD;
+    for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(d * 330, -50); ctx.lineTo(d * 440, -50); ctx.lineTo(d * 400, 0); ctx.lineTo(d * 440, 50); ctx.lineTo(d * 330, 50); ctx.fill(); }
+    ctx.fillStyle = C.coral; rrect(ctx, -360, -70, 720, 140, 24); ctx.fill();
+    ctx.restore();
+  }
+  sticker(ctx, '先生募集中！', CX, 902, 104, 27.8, t, { fill: C.white, stroke: C.coralD, sw: 14 });
+  // CTA with arrow up to the profile link
+  const cp = E.outCubic(rm(u, 1.2, 1.5));
+  if (cp > 0) {
+    ctx.globalAlpha = cp;
+    setText(ctx, FJ(46, 900)); const tw = ctx.measureText('くわしくはプロフィールのリンクから').width;
+    ctx.fillStyle = C.white; rrect(ctx, CX - tw / 2 - 40, 1060 - 44, tw + 80, 88, 44); ctx.fill();
+    ctx.fillStyle = C.navy; setText(ctx, FJ(46, 900), 'center', 'middle'); ctx.fillText('くわしくはプロフィールのリンクから', CX, 1062);
+    const ay = 1150 + Math.sin(t * 8) * 10;
+    ctx.fillStyle = C.navy; ctx.beginPath(); ctx.moveTo(CX, ay - 30); ctx.lineTo(CX + 26, ay); ctx.lineTo(CX - 26, ay); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  // everyone waves
+  hill(ctx, 1500, C.leaf, 20, 1);
+  const cast = [[170, 'k', 0], [360, 'k', 1], [540, 't', 0], [720, 'k', 2], [900, 'k', 3]];
+  cast.forEach(([x, kind, i], k) => {
+    const p = springOut(rm(u, .9 + k * .08, 1.5 + k * .08), 3, 6);
+    if (p <= 0) return;
+    if (kind === 't') teacher(ctx, x, 1560 + (1 - p) * 500, .8, { wave: true }, t);
+    else kid(ctx, x, 1560 + (1 - p) * 400, .8, K(i, { wave: true, open: true, flip: x > CX }), t);
+  });
+}
+
+/* ============================================================
+   composition + wave wipes
+   ============================================================ */
+const SCENES = [s1, s2, s3, s4, s5, s6, s7, s8];
+const LEADS = [C.sun, C.leaf, C.coral, C.sky2, C.lav, C.sun, C.coral];
+function sceneIndex(t) { let k = 0; for (let i = 0; i < 8; i++) if (t >= STARTS[i]) k = i; return k; }
+function clipWave(ctx, p, t) {
+  const y0 = lerp(H + 140, -180, E.inOutCubic(p));
+  ctx.beginPath(); ctx.moveTo(-60, H + 200); ctx.lineTo(-60, y0);
+  for (let x = -60; x <= W + 60; x += 20) ctx.lineTo(x, y0 + 50 * Math.sin(x * .011 + t * 9));
+  ctx.lineTo(W + 60, H + 200); ctx.closePath();
+}
+function compose(ctx, t) {
+  for (let i = 1; i < 8; i++) {
+    const b = STARTS[i], a = b - .3, z = b + .3;
+    if (t >= a && t < z) {
+      const p = rm(t, a, z);
+      SCENES[i - 1](ctx, t);
+      ctx.save(); clipWave(ctx, rm(p, 0, .8), t); ctx.clip(); bg(ctx, LEADS[i - 1]); ctx.restore();
+      ctx.save(); clipWave(ctx, rm(p, .2, 1), t + .3); ctx.clip(); SCENES[i](ctx, t); ctx.restore();
+      return;
+    }
+  }
+  SCENES[sceneIndex(t)](ctx, t);
+}
+function drawAll(ctx, t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  compose(ctx, t);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+let GRAIN = [];
+function post(ctx, frame) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const gr = rng(frame * 7 + 1);
+  ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = .06;
+  const pat = ctx.createPattern(GRAIN[frame % 4], 'repeat');
+  ctx.save(); ctx.translate(Math.floor(gr() * 256), Math.floor(gr() * 256)); ctx.fillStyle = pat; ctx.fillRect(-256, -256, W + 512, H + 512); ctx.restore();
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+function initGrain() {
+  const r = rng(3);
+  for (let k = 0; k < 4; k++) {
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const x = c.getContext('2d'); const id = x.createImageData(256, 256);
+    for (let i = 0; i < id.data.length; i += 4) { const v = 128 + (r() - .5) * 180; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255; }
+    x.putImageData(id, 0, 0); GRAIN.push(c);
+  }
+}
+
+/* ---------- renderer with motion blur ---------- */
+const cv = document.getElementById('c'), CTX = cv.getContext('2d');
+let SUB, SUBX, ACC, ACCX;
+function renderFrame(t, frame, n) {
+  if (n <= 1) drawAll(CTX, t);
+  else {
+    for (let k = 0; k < n; k++) {
+      const tk = clamp(t + ((k + .5) / n - .5) * SHUTTER, 0, DUR - 1e-4);
+      drawAll(SUBX, tk); ACCX.globalAlpha = 1 / (k + 1); ACCX.drawImage(SUB, 0, 0);
+    }
+    CTX.setTransform(1, 0, 0, 1, 0, 0); CTX.globalAlpha = 1; CTX.globalCompositeOperation = 'copy';
+    CTX.drawImage(ACC, 0, 0); CTX.globalCompositeOperation = 'source-over';
+  }
+  post(CTX, frame);
+}
+window.READY = (async () => {
+  await Promise.all([document.fonts.load(FJ(40, 900)), document.fonts.load(FJ(40, 700))]);
+  await document.fonts.ready;
+  initGrain();
+  SUB = document.createElement('canvas'); SUB.width = W; SUB.height = H; SUBX = SUB.getContext('2d');
+  ACC = document.createElement('canvas'); ACC.width = W; ACC.height = H; ACCX = ACC.getContext('2d', { colorType: 'float16' });
+  return true;
+})();
+window.renderAt = (i, n = 6) => { renderFrame((i + .5) / FPS, i, n); return cv.toDataURL('image/png'); };
+window.stillAt = (t, n = 6) => { renderFrame(t, Math.floor(t * FPS), n); };
+
+/* ---------- live preview ---------- */
+const Q = new URLSearchParams(location.search);
+if (!Q.has('render')) {
+  const audio = new Audio('reel-audio.m4a'); let playing = false, t0 = 0, hasAudio = true;
+  audio.addEventListener('error', () => { hasAudio = false; });
+  READY.then(() => {
+    const ts = Q.has('t') ? parseFloat(Q.get('t')) : 1.8;
+    renderFrame(ts, Math.floor(ts * FPS), 1);
+    if (!Q.has('t')) { CTX.fillStyle = 'rgba(46,58,89,.5)'; CTX.fillRect(0, 0, W, H); CTX.fillStyle = C.white; setText(CTX, FJ(64, 900), 'center', 'middle'); CTX.fillText('タップで再生', CX, CY); }
+  });
+  const loop = () => {
+    if (!playing) return;
+    let t = hasAudio && !audio.paused ? audio.currentTime : (performance.now() - t0) / 1000;
+    if (t >= DUR) { t = 0; t0 = performance.now(); if (hasAudio) { audio.currentTime = 0; audio.play().catch(() => {}); } }
+    renderFrame(t, Math.floor(t * FPS), 1); requestAnimationFrame(loop);
+  };
+  cv.addEventListener('click', async () => {
+    await READY;
+    if (playing) { playing = false; audio.pause(); return; }
+    playing = true; t0 = performance.now();
+    if (hasAudio) { audio.currentTime = 0; audio.play().catch(() => { hasAudio = false; }); }
+    requestAnimationFrame(loop);
+  });
+}
+</script>
+</body>
+</html>
